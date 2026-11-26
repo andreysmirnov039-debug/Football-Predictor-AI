@@ -41,7 +41,30 @@ jobs:
             exit 1
           fi
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+      - name: Fix Java JVM target
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
 
+          p = Path(os.environ["PROJECT_DIR"]) / "app/build.gradle.kts"
+          s = p.read_text()
+
+          if "sourceCompatibility = JavaVersion.VERSION_17" not in s:
+              s = s.replace(
+                  "android {",
+                  """android {
+              compileOptions {
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
+              }
+          """,
+                  1
+              )
+
+          p.write_text(s)
+          PY
+          
       - name: Build APK
         run: gradle -p "$PROJECT_DIR" assembleDebug
 
