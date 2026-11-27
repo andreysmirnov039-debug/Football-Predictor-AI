@@ -1,4 +1,3 @@
-
 name: Build Football Predictor APK
 
 on:
@@ -30,41 +29,23 @@ jobs:
         run: |
           mkdir -p /tmp/fp-source
           ZIP_FILE=$(find . -maxdepth 1 -iname '*.zip' -print -quit)
+
           if [ -z "$ZIP_FILE" ]; then
             echo "Android ZIP archive not found"
             exit 1
           fi
+
           unzip -q "$ZIP_FILE" -d /tmp/fp-source
+
           PROJECT_DIR=$(dirname "$(find /tmp/fp-source -name settings.gradle.kts -print -quit)")
-          if [ -z "$PROJECT_DIR" ]; then
-            echo "Android project not found"
+
+          if [ -z "$PROJECT_DIR" ] || [ ! -f "$PROJECT_DIR/app/build.gradle.kts" ]; then
+            echo "Android project structure is incorrect"
             exit 1
           fi
+
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-      - name: Fix Java JVM target
-        run: |
-          python3 - <<'PY'
-          import os
-          from pathlib import Path
 
-          p = Path(os.environ["PROJECT_DIR"]) / "app/build.gradle.kts"
-          s = p.read_text()
-
-          if "sourceCompatibility = JavaVersion.VERSION_17" not in s:
-              s = s.replace(
-                  "android {",
-                  """android {
-              compileOptions {
-                  sourceCompatibility = JavaVersion.VERSION_17
-                  targetCompatibility = JavaVersion.VERSION_17
-              }
-          """,
-                  1
-              )
-
-          p.write_text(s)
-          PY
-          
       - name: Build APK
         run: gradle -p "$PROJECT_DIR" assembleDebug
 
@@ -72,4 +53,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: FootballPredictorAI-APK
-          path: /tmp/fp-source/app/build/outputs/apk/debug/app-debug.apk
+          path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/app-debug.apk
